@@ -1,0 +1,16 @@
+.kasir-umkm-wrapper {
+    max-width: 600px;
+}
+
+.kasir-umkm-wrapper h1 {
+    font-weight: 600;
+}
+
+.kasir-umkm-wrapper .card {
+    border-radius: 10px;
+}
+
+.kasir-umkm-wrapper button {
+    font-size: 16px;
+    padding: 12px;
+}

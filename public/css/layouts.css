@@ -1,0 +1,30 @@
+/* ===== LAYOUT GLOBAL ===== */
+body.sb-nav-fixed {
+    background-color: #f8f9fa;
+}
+
+/* ===== SIDEBAR ===== */
+.sb-sidenav {
+    background-color: #212529;
+}
+
+.sb-sidenav .nav-link {
+    color: #adb5bd;
+}
+
+.sb-sidenav .nav-link:hover {
+    background-color: #343a40;
+    color: #fff;
+}
+
+.sb-sidenav-menu-heading {
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #ced4da;
+}
+
+/* ===== FOOTER ===== */
+.footer-custom {
+    border-top: 1px solid #dee2e6;
+}

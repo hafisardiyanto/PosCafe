@@ -1,0 +1,19 @@
+/* ===============================
+   FORM TAMBAH KASIR
+   =============================== */
+
+.form-kasir {
+    max-width: 600px;
+    margin-top: 20px;
+    border-radius: 8px;
+}
+
+.form-kasir .card-header {
+    background-color: #0d6efd;
+    color: white;
+    font-weight: bold;
+}
+
+.form-kasir label {
+    font-weight: 500;
+}
