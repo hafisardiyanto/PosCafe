@@ -5,10 +5,12 @@
 @section('content')
 <h1 class="mt-4">Input Pesanan Customer</h1>
 
+{{-- ALERT SUCCESS --}}
 @if(session('success'))
     <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
+{{-- ALERT ERROR --}}
 @if($errors->any())
     <div class="alert alert-danger">{{ $errors->first() }}</div>
 @endif
@@ -21,71 +23,86 @@
         <tr>
             <th>Menu</th>
             <th width="120">Qty</th>
-            <th width="120">Status</th>
+            <th width="140">Status</th>
         </tr>
     </thead>
     <tbody>
 
-@foreach($menus as $index => $menu)
-<tr>
-<td>
-    {{-- GAMBAR (OPTIONAL) --}}
-    @if($menu->images && count(json_decode($menu->images)) > 0)
-        <img src="{{ asset('storage/'.json_decode($menu->images)[0]) }}"
-             width="70"
-             class="mb-2 rounded">
-        <br>
-    @endif
+    {{-- PASTIKAN $menus DIKIRIM DARI CONTROLLER --}}
+    @forelse($menus as $index => $menu)
+    <tr>
+        <td>
+            {{-- GAMBAR (OPTIONAL) --}}
+            @if($menu->images)
+                @php
+                    $imgs = json_decode($menu->images, true);
+                @endphp
 
-    <strong>{{ $menu->name }}</strong><br>
-    Rp {{ number_format($menu->price) }}
+                @if(is_array($imgs) && count($imgs) > 0)
+                    <img src="{{ asset('storage/'.$imgs[0]) }}"
+                         width="70"
+                         class="mb-2 rounded">
+                    <br>
+                @endif
+            @endif
 
-    @if($menu->source === 'umkm')
-        <br><small>Stok: {{ $menu->stock }}</small>
-    @endif
-</td>
+            <strong>{{ $menu->name }}</strong><br>
+            Rp {{ number_format($menu->price) }}
 
-<td>
-    @if($menu->availability === 'open')
-        <input type="number"
-               name="items[{{ $index }}][qty]"
-               class="form-control"
-               min="0"
-               value="0">
-    @else
-        <em class="text-muted">Tidak tersedia</em>
-    @endif
+            @if($menu->source === 'umkm')
+                <br><small>Stok: {{ $menu->stock }}</small>
+            @endif
+        </td>
 
-    <input type="hidden"
-           name="items[{{ $index }}][menu_id]"
-           value="{{ $menu->id }}">
-</td>
+        <td>
+            @if($menu->availability === 'open')
+                <input type="number"
+                       name="items[{{ $index }}][qty]"
+                       class="form-control"
+                       min="0"
+                       value="0">
+            @else
+                <em class="text-muted">Tidak tersedia</em>
+            @endif
 
-<td class="text-center">
-    @if($menu->availability === 'open')
-        <span class="badge bg-success mb-2">OPEN</span>
+            <input type="hidden"
+                   name="items[{{ $index }}][menu_id]"
+                   value="{{ $menu->id }}">
+        </td>
 
-        <button
-            formaction="{{ route('menu.close',$menu->id) }}"
-            formmethod="POST"
-            class="btn btn-danger btn-sm w-100">
-            @csrf
-            Close
-        </button>
-    @else
-        <span class="badge bg-danger mb-2">HABIS</span>
+        <td class="text-center">
+            @if($menu->availability === 'open')
+                <span class="badge bg-success mb-2">OPEN</span>
 
-        <button
-            formaction="{{ route('menu.open',$menu->id) }}"
-            formmethod="POST"
-            class="btn btn-success btn-sm w-100">
-            @csrf
-            Open
-        </button>
-    @endif
-</td>
-</tr>
-@endforeach
+                <button
+                    formaction="{{ route('menu.close',$menu->id) }}"
+                    formmethod="POST"
+                    class="btn btn-danger btn-sm w-100"
+                    onclick="return confirm('Tutup menu ini?')">
+                    @csrf
+                    Close
+                </button>
+            @else
+                <span class="badge bg-danger mb-2">HABIS</span>
+
+                <button
+                    formaction="{{ route('menu.open',$menu->id) }}"
+                    formmethod="POST"
+                    class="btn btn-success btn-sm w-100"
+                    onclick="return confirm('Buka menu ini?')">
+                    @csrf
+                    Open
+                </button>
+            @endif
+        </td>
+    </tr>
+    @empty
+    <tr>
+        <td colspan="3" class="text-center text-muted">
+            Tidak ada menu tersedia
+        </td>
+    </tr>
+    @endforelse
 
     </tbody>
 </table>
