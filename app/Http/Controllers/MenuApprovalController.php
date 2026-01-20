@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class MenuApprovalController extends Controller
 {
     /* =================================================
-       KASIR AJUKAN MENU UMKM / TAMBAH QTY
+       KASIR AJUKAN MENU UMKM / TAMBAH STOK
        ================================================= */
     public function storeByKasir(Request $request)
     {
@@ -21,51 +21,57 @@ class MenuApprovalController extends Controller
             'image' => 'nullable|image|max:2048',
         ]);
 
-        // upload gambar (opsional)
+        /* ===== UPLOAD GAMBAR (OPSIONAL) ===== */
         $imagePath = null;
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')
                 ->store('menu-images', 'public');
         }
 
-        // cek menu sudah ada & approved
+        /* ===== CEK MENU UMKM SUDAH APPROVED ===== */
         $menu = Menu::where('name', $request->name)
+            ->where('source', 'umkm')
             ->where('status', 'approved')
             ->first();
 
-        /* ===============================
-           JIKA MENU SUDAH ADA
-           =============================== */
+        /* =========================================
+           JIKA MENU SUDAH ADA & APPROVED
+           ========================================= */
         if ($menu) {
-            // kasir hanya boleh tambah qty
             $menu->increment('stock', $request->qty);
 
-            // catat histori stok
             MenuStock::create([
                 'menu_id' => $menu->id,
                 'qty'     => $request->qty,
                 'user_id' => Auth::id(),
+                'note'    => 'Tambah stok oleh kasir',
             ]);
 
-            return back()->with('success', 'Qty menu berhasil ditambahkan');
+            // buka menu jika sebelumnya closed
+            if ($menu->availability === 'closed') {
+                $menu->update(['availability' => 'open']);
+            }
+
+            return back()->with('success', 'Stok menu berhasil ditambahkan');
         }
 
-        /* ===============================
-           JIKA MENU BELUM ADA (AJUKAN)
-           =============================== */
+        /* =========================================
+           MENU BARU → STATUS PENDING (PERLU APPROVAL)
+           ========================================= */
         Menu::create([
-            'name'       => $request->name,
-            'price'      => $request->price,
-            'stock'      => $request->qty,
-            'status'     => 'pending',      // WAJIB approval
-            'source'     => 'umkm',
-            'image'      => $imagePath,
-            'created_by' => Auth::id(),
+            'name'         => $request->name,
+            'price'        => $request->price,
+            'stock'        => $request->qty,
+            'status'       => 'pending',
+            'source'       => 'umkm',
+            'availability' => 'closed',
+            'images'       => $imagePath ? json_encode([$imagePath]) : null,
+            'created_by'   => Auth::id(),
         ]);
 
         return back()->with(
             'success',
-            'Menu UMKM berhasil diajukan, menunggu persetujuan Admin / Manager'
+            'Menu UMKM berhasil diajukan dan menunggu approval Admin / Manager'
         );
     }
 
@@ -75,19 +81,20 @@ class MenuApprovalController extends Controller
     public function storeByAdmin(Request $request)
     {
         $request->validate([
-            'name'  => 'required|string|unique:menus,name',
-            'price' => 'required|numeric',
-            'stock' => 'nullable|integer',
-            'source'=> 'required|in:internal,umkm',
+            'name'   => 'required|string|unique:menus,name',
+            'price'  => 'required|numeric|min:0',
+            'stock'  => 'nullable|integer|min:0',
+            'source' => 'required|in:internal,umkm',
         ]);
 
         Menu::create([
-            'name'       => $request->name,
-            'price'      => $request->price,
-            'stock'      => $request->source === 'umkm' ? $request->stock : null,
-            'status'     => 'approved',     // TANPA approval
-            'source'     => $request->source,
-            'created_by' => Auth::id(),
+            'name'         => $request->name,
+            'price'        => $request->price,
+            'stock'        => $request->source === 'umkm' ? $request->stock : null,
+            'status'       => 'approved',
+            'source'       => $request->source,
+            'availability' => 'open',
+            'created_by'   => Auth::id(),
         ]);
 
         return back()->with('success', 'Menu berhasil ditambahkan');
@@ -98,31 +105,76 @@ class MenuApprovalController extends Controller
        ================================================= */
     public function approve($id)
     {
-        $menu = Menu::findOrFail($id);
-        $menu->update(['status' => 'approved']);
+        $menu = Menu::where('id', $id)
+            ->where('status', 'pending')
+            ->firstOrFail();
 
-        return back()->with('success', 'Menu berhasil disetujui');
+        $menu->update([
+            'status'       => 'approved',
+            'availability' => 'open',
+        ]);
+
+        return back()->with('success', 'Menu UMKM berhasil disetujui');
     }
 
     public function reject($id)
     {
-        $menu = Menu::findOrFail($id);
+        $menu = Menu::where('id', $id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
         $menu->update(['status' => 'rejected']);
 
-        return back()->with('success', 'Menu ditolak');
+        return back()->with('success', 'Menu UMKM ditolak');
     }
 
     /* =================================================
-       HALAMAN MENU
+       HALAMAN MENU (ADMIN / MANAGER)
        ================================================= */
     public function index()
     {
-        $approvedMenus = Menu::where('status', 'approved')->get();
-        $pendingMenus  = Menu::where('status', 'pending')->get();
+         // SEMUA MENU APPROVED
+    $approvedMenus = Menu::where('status', 'approved')
+        ->orderBy('source')
+        ->orderBy('name')
+        ->get();
 
-        return view('menus.index', compact(
-            'approvedMenus',
-            'pendingMenus'
-        ));
+    // KHUSUS MENU UMKM YANG SUDAH APPROVED (UNTUK DROPDOWN)
+    $approvedUmkmMenus = Menu::where('status', 'approved')
+        ->where('source', 'umkm')
+        ->orderBy('name')
+        ->get();
+
+    // MENU UMKM MENUNGGU APPROVAL
+    $pendingMenus = Menu::where('status', 'pending')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return view('menus.index', compact(
+        'approvedMenus',
+        'approvedUmkmMenus',
+        'pendingMenus'
+    ));
+    }
+
+    /* =================================================
+       OPEN / CLOSE MENU (KASIR & ADMIN)
+       ================================================= */
+    public function close($id)
+    {
+        Menu::where('id', $id)->update([
+            'availability' => 'closed'
+        ]);
+
+        return back()->with('success', 'Menu berhasil ditutup');
+    }
+
+    public function open($id)
+    {
+        Menu::where('id', $id)->update([
+            'availability' => 'open'
+        ]);
+
+        return back()->with('success', 'Menu berhasil dibuka');
     }
 }

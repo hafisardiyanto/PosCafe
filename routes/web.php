@@ -86,15 +86,13 @@ Route::middleware(['auth'])->group(function () {
     // ================= MANAGER =================
     Route::middleware(['auth','role:kasir'])->group(function () {
 
-    // HALAMAN INPUT PESANAN
-    Route::get('/kasir/transaksi', function () {
-        return view('kasir.transaksi');
-    })->name('kasir.transaksi');
+   // HALAMAN TRANSAKSI
+    Route::get('/kasir/transaksi', [TransactionController::class, 'index'])
+        ->name('kasir.transaksi');
 
     // SIMPAN TRANSAKSI
-    Route::post('/kasir/transaksi',
-        [TransactionController::class, 'store']
-    )->name('kasir.transaksi.store');
+    Route::post('/kasir/transaksi', [TransactionController::class, 'store'])
+        ->name('kasir.transaksi.store');
 
     Route::middleware(['auth','role:kasir'])->group(function () {
 
@@ -161,6 +159,12 @@ Route::middleware(['auth'])->group(function () {
         [MenuApprovalController::class, 'storeByKasir']
     )->name('menu.kasir.store');
 
+  Route::get('/kasir/transaksi', [TransactionController::class, 'index'])
+        ->name('kasir.transaksi');
+
+    Route::post('/kasir/transaksi', [TransactionController::class, 'store'])
+        ->name('kasir.transaksi.store');
+
 });
 
 
@@ -182,3 +186,10 @@ Route::middleware(['auth'])->group(function () {
  });
 
 });
+
+ // ADMIN / MANAGER ONLY
+    Route::post('/menu/{id}/close', [MenuController::class, 'close'])
+        ->name('menu.close');
+
+    Route::post('/menu/{id}/open', [MenuController::class, 'open'])
+        ->name('menu.open');

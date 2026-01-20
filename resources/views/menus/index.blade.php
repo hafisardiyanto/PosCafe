@@ -32,45 +32,33 @@
               enctype="multipart/form-data">
             @csrf
 
-            {{-- NAMA MENU --}}
             <div class="mb-3">
                 <label class="form-label">Nama Menu UMKM</label>
                 <input type="text"
                        name="name"
                        class="form-control"
-                       placeholder="Contoh: Es Teh UMKM"
                        required>
                 <small class="text-muted">
-                    Jika nama menu sudah ada & approved, sistem otomatis menambah Qty
+                    Jika menu sudah ada & approved, stok otomatis ditambah
                 </small>
             </div>
 
-            {{-- HARGA (HANYA UNTUK MENU BARU) --}}
             <div class="mb-3">
-                <label class="form-label">Harga (jika menu baru)</label>
+                <label class="form-label">Harga (menu baru)</label>
                 <input type="number" name="price" class="form-control">
             </div>
 
-            {{-- QTY --}}
             <div class="mb-3">
                 <label class="form-label">Qty</label>
-                <input type="number"
-                       name="qty"
-                       class="form-control"
-                       required>
+                <input type="number" name="qty" class="form-control" required>
             </div>
 
-            {{-- FOTO (OPSIONAL, KAMERA) --}}
             <div class="mb-3">
                 <label class="form-label">Foto Menu (Opsional)</label>
                 <input type="file"
                        name="image"
                        class="form-control"
-                       accept="image/*"
-                       capture="environment">
-                <small class="text-muted">
-                    Bisa langsung ambil foto dari kamera HP
-                </small>
+                       accept="image/*">
             </div>
 
             <button class="btn btn-warning w-100">
@@ -90,50 +78,71 @@
 
 <div class="card mb-4">
     <div class="card-header bg-primary text-white">
-        <i class="fas fa-plus-circle me-1"></i>
         Tambah Menu (Admin / Manager)
     </div>
 
     <div class="card-body">
 
-        <form method="POST" action="{{ route('menu.admin.store') }}">
-            @csrf
+<form method="POST" action="{{ route('menu.admin.store') }}">
+@csrf
 
-            <div class="mb-3">
-                <label class="form-label">Nama Menu</label>
-                <input type="text" name="name" class="form-control" required>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Harga</label>
-                <input type="number" name="price" class="form-control" required>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Sumber Menu</label>
-                <select name="source" class="form-control">
-                    <option value="internal">Internal</option>
-                    <option value="umkm">UMKM</option>
-                </select>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Stok (khusus UMKM)</label>
-                <input type="number" name="stock" class="form-control">
-            </div>
-
-            <button class="btn btn-primary w-100">
-                Simpan Menu
-            </button>
-        </form>
-
-    </div>
+<div class="mb-3">
+    <label class="form-label">Pilih Menu UMKM (Approved)</label>
+    <select class="form-control" id="menuDropdown">
+        <option value="">-- Pilih --</option>
+        @foreach($approvedUmkmMenus as $menu)
+            <option
+                data-name="{{ $menu->name }}"
+                data-price="{{ $menu->price }}"
+                data-stock="{{ $menu->stock }}">
+                {{ $menu->name }}
+            </option>
+        @endforeach
+    </select>
 </div>
 
-{{-- ================= MENU PENDING ================= --}}
+<div class="mb-3">
+    <label>Nama Menu</label>
+    <input type="text" name="name" id="name" class="form-control" required>
+</div>
+
+<div class="mb-3">
+    <label>Harga</label>
+    <input type="number" name="price" id="price" class="form-control" required>
+</div>
+
+<div class="mb-3">
+    <label>Sumber</label>
+    <select name="source" class="form-control">
+        <option value="internal">Internal</option>
+        <option value="umkm">UMKM</option>
+    </select>
+</div>
+
+<div class="mb-3">
+    <label>Stok</label>
+    <input type="number" name="stock" id="stock" class="form-control">
+</div>
+
+<button class="btn btn-primary w-100">Simpan Menu</button>
+
+</form>
+</div>
+</div>
+
+{{-- AUTO FILL --}}
+<script>
+document.getElementById('menuDropdown').addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    document.getElementById('name').value  = opt.dataset.name || '';
+    document.getElementById('price').value = opt.dataset.price || '';
+    document.getElementById('stock').value = opt.dataset.stock || '';
+});
+</script>
+
+{{-- ================= PENDING MENU ================= --}}
 <div class="card">
     <div class="card-header bg-secondary text-white">
-        <i class="fas fa-clock me-1"></i>
         Menu UMKM Menunggu Approval
     </div>
 
@@ -148,37 +157,33 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($pendingMenus as $menu)
+                @forelse($pendingMenus as $menu)
                 <tr>
                     <td>{{ $menu->name }}</td>
                     <td>Rp {{ number_format($menu->price) }}</td>
                     <td>{{ $menu->stock }}</td>
                     <td>
-                        <form method="POST"
-                              action="{{ route('menu.approve',$menu->id) }}"
-                              class="d-inline">
+                        <form method="POST" action="{{ route('menu.approve',$menu->id) }}" class="d-inline">
                             @csrf
-                            <button class="btn btn-success btn-sm">
-                                Approve
-                            </button>
+                            <button class="btn btn-success btn-sm">Approve</button>
                         </form>
-
-                        <form method="POST"
-                              action="{{ route('menu.reject',$menu->id) }}"
-                              class="d-inline">
+                        <form method="POST" action="{{ route('menu.reject',$menu->id) }}" class="d-inline">
                             @csrf
-                            <button class="btn btn-danger btn-sm">
-                                Reject
-                            </button>
+                            <button class="btn btn-danger btn-sm">Reject</button>
                         </form>
                     </td>
                 </tr>
-                @endforeach
+                @empty
+                <tr>
+                    <td colspan="4" class="text-center text-muted">
+                        Tidak ada menu pending
+                    </td>
+                </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
 </div>
 
 @endif
-
 @endsection
