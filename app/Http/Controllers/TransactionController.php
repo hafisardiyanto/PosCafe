@@ -18,7 +18,7 @@ class TransactionController extends Controller
             'items.*.qty' => 'required|integer|min:1',
         ]);
 
-        // buat transaksi
+        // Buat transaksi
         $transaction = Transaction::create([
             'kasir_id' => auth()->id(),
             'total_price' => 0
@@ -27,15 +27,28 @@ class TransactionController extends Controller
         $total = 0;
 
         foreach ($request->items as $item) {
-            $menu = Menu::findOrFail($item['menu_id']);
 
-            // cek stok UMKM
+            if ($item['qty'] <= 0) {
+                continue;
+            }
+
+            $menu = Menu::lockForUpdate()->findOrFail($item['menu_id']);
+
+            // CEK MENU CLOSED
+            if ($menu->availability === 'closed') {
+                DB::rollBack();
+                return back()->withErrors('Menu '.$menu->name.' sedang habis / closed');
+            }
+
+            // CEK STOK UMKM
             if ($menu->source === 'umkm' && $menu->stock < $item['qty']) {
+                DB::rollBack();
                 return back()->withErrors('Stok menu '.$menu->name.' tidak mencukupi');
             }
 
             $subtotal = $menu->price * $item['qty'];
 
+            // Simpan item transaksi
             $transaction->items()->create([
                 'menu_id' => $menu->id,
                 'qty' => $item['qty'],
@@ -43,30 +56,25 @@ class TransactionController extends Controller
                 'subtotal' => $subtotal
             ]);
 
-            // kurangi stok UMKM
+            // Kurangi stok UMKM
             if ($menu->source === 'umkm') {
                 $menu->decrement('stock', $item['qty']);
+
+                // AUTO CLOSED jika stok habis
+                if ($menu->stock - $item['qty'] <= 0) {
+                    $menu->update(['availability' => 'closed']);
+                }
             }
 
             $total += $subtotal;
         }
 
+        // Update total transaksi
         $transaction->update([
             'total_price' => $total
         ]);
 
         DB::commit();
-
-        // setelah decrement stock UMKM
-if ($menu->source === 'umkm') {
-    $menu->decrement('stock', $item['qty']);
-
-    // AUTO CLOSED jika stok habis
-    if ($menu->stock <= 0) {
-        $menu->update(['availability' => 'closed']);
-    }
-}
-
 
         return redirect()->route('kasir.transaksi')
             ->with('success', 'Transaksi berhasil. Total: Rp '.number_format($total));
